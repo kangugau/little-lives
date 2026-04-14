@@ -60,7 +60,7 @@ describe("generateReceipt", () => {
     const receipt = generateReceipt(options);
 
     expect(receipt.totalPaid).toBe(100);
-    expect(receipt.remainingBalance).toBe(100);
+    expect(receipt.remainingBalance).toBe(0);
     expect(receipt.updatedInvoice.outstandingAmount).toBe(100);
     expect(receipt.updatedInvoice.status).toBe("pending");
   });
@@ -93,7 +93,7 @@ describe("generateReceipt", () => {
     const receipt = generateReceipt(options);
 
     expect(receipt.totalPaid).toBe(55);
-    expect(receipt.remainingBalance).toBe(55);
+    expect(receipt.remainingBalance).toBe(0);
     expect(receipt.updatedInvoice.outstandingAmount).toBe(55);
     expect(receipt.updatedInvoice.status).toBe("pending");
   });
@@ -115,6 +115,16 @@ describe("generateReceipt", () => {
     const receipt = generateReceipt(options);
 
     expect(receipt.remainingBalance).toBe(0);
+    expect(receipt.updatedInvoice.status).toBe("paid");
+  });
+
+  it("should handle overpaid", () => {
+    const invoice = createInvoice(100, 100);
+    const payment = createPayment(150);
+    const options: GenerateReceiptOptions = { payment, invoice };
+    const receipt = generateReceipt(options);
+
+    expect(receipt.remainingBalance).toBe(50);
     expect(receipt.updatedInvoice.status).toBe("paid");
   });
 });

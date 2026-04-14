@@ -1,5 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
-import { Invoice, InvoiceStatus, Payment, Receipt, ReceiptItem } from "../types";
+import {
+  Invoice,
+  InvoiceStatus,
+  Payment,
+  Receipt,
+  ReceiptItem,
+} from "../types";
 
 export interface GenerateReceiptOptions {
   payment: Payment;
@@ -10,8 +16,10 @@ export function generateReceipt(options: GenerateReceiptOptions): Receipt {
   const { payment, invoice } = options;
 
   const rawRemainingBalance = invoice.outstandingAmount - payment.amount;
-  const remainingBalance = rawRemainingBalance < 0 ? 0 : rawRemainingBalance;
-  const updatedOutstandingAmount = rawRemainingBalance > 0 ? rawRemainingBalance : 0;
+  const remainingBalance =
+    rawRemainingBalance < 0 ? rawRemainingBalance * -1 : 0;
+  const updatedOutstandingAmount =
+    rawRemainingBalance > 0 ? rawRemainingBalance : 0;
   const isPaid = rawRemainingBalance <= 0 || invoice.outstandingAmount === 0;
 
   const items: ReceiptItem[] = [];
@@ -26,7 +34,7 @@ export function generateReceipt(options: GenerateReceiptOptions): Receipt {
     updatedInvoice: {
       ...invoice,
       outstandingAmount: updatedOutstandingAmount,
-      status: isPaid ? "paid" as InvoiceStatus : invoice.status,
+      status: isPaid ? ("paid" as InvoiceStatus) : invoice.status,
     },
   };
 }
