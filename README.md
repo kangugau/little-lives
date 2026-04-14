@@ -23,6 +23,9 @@ pnpm example
 
 ## Example
 
+Create invoice with `calculateInvoiceTotal`, pay invoice with `processPayment` that will call `generateReceipt` and return the receipt, payment result and updated invoice. 
+
+
 See `example.js` for integration examples demonstrating:
 - Simple invoice with 2 items, paid by single payment
 - Simple invoice overpaid by 2 payments
