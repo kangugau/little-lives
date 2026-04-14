@@ -1,15 +1,16 @@
 import { v4 as uuidv4 } from "uuid";
-import { PaymentStatus } from "../../types";
+import { PaymentMethod, PaymentStatus } from "../../types";
 
 export type ExternalPaymentStatus = "pending" | "completed" | "failed";
 
 export interface ExternalPaymentRequest {
   amount: number;
-  method: string;
+  method: PaymentMethod;
 }
 
 export interface ExternalPaymentResponse {
   externalId: string;
+  provider: string;
   status: ExternalPaymentStatus;
   paymentStatus: PaymentStatus;
   referenceNumber: string;
@@ -23,21 +24,38 @@ export interface ExternalPaymentResult {
   message: string;
 }
 
+const PROVIDER_MAP: Record<PaymentMethod, string> = {
+  cash: "CashProvider",
+  credit_card: "CreditCardProvider",
+  debit_card: "DebitCardProvider",
+  bank_transfer: "BankTransferProvider",
+};
+
+const REF_PREFIX: Record<PaymentMethod, string> = {
+  cash: "CSH",
+  credit_card: "CC",
+  debit_card: "DB",
+  bank_transfer: "BT",
+};
+
 export class ExternalPaymentService {
-  async createPayment(request: ExternalPaymentRequest): Promise<ExternalPaymentResponse> {
+  async createPayment(
+    request: ExternalPaymentRequest,
+  ): Promise<ExternalPaymentResponse> {
     const externalId = uuidv4();
     const { amount, method } = request;
-    
-    await this.simulateDelay();
-    
-    const isPending = method === "bank_transfer" || Math.random() < 0.3;
-    const status: ExternalPaymentStatus = isPending ? "pending" : "completed";
-    const paymentStatus: PaymentStatus = status === "completed" ? "complete" : "pending";
-    
-    const referenceNumber = this.generateReferenceNumber(method, externalId);
-    
+
+    await this.simulateDelay(method);
+
+    const status = this.getStatus(method, amount);
+    const paymentStatus: PaymentStatus =
+      status === "completed" ? "complete" : "pending";
+
+    const referenceNumber = this.generateRef(method, externalId);
+
     return {
       externalId,
+      provider: PROVIDER_MAP[method],
       status,
       paymentStatus,
       referenceNumber,
@@ -45,47 +63,26 @@ export class ExternalPaymentService {
     };
   }
 
-  async confirmPayment(externalId: string): Promise<ExternalPaymentResult> {
-    await this.simulateDelay();
-    
-    const isCompleted = Math.random() > 0.2;
-    const status: ExternalPaymentStatus = isCompleted ? "completed" : "failed";
-    const paymentStatus: PaymentStatus = status === "completed" ? "complete" : "pending";
-    
-    return {
-      externalId,
-      status,
-      paymentStatus,
-      message: status === "completed" 
-        ? "Payment confirmed successfully" 
-        : "Payment failed",
+  private getStatus(method: PaymentMethod, amount: number): ExternalPaymentStatus {
+    if (method === "cash") return "completed";
+    if (method === "bank_transfer") return "pending";
+    if (method === "credit_card") return amount > 10000 ? "pending" : "completed";
+    return Math.random() > 0.1 ? "completed" : "failed";
+  }
+
+  private generateRef(method: PaymentMethod, id: string): string {
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    return `REF-${REF_PREFIX[method]}-${date}-${id.slice(0, 8)}`;
+  }
+
+  private async simulateDelay(method: PaymentMethod): Promise<void> {
+    const delay: Record<PaymentMethod, number> = {
+      cash: 50,
+      credit_card: 150,
+      debit_card: 120,
+      bank_transfer: 80,
     };
-  }
-
-  async getPaymentStatus(externalId: string): Promise<ExternalPaymentResult> {
-    await this.simulateDelay();
-    
-    const statuses: ExternalPaymentStatus[] = ["pending", "completed", "failed"];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const paymentStatus: PaymentStatus = status === "completed" ? "complete" : "pending";
-    
-    return {
-      externalId,
-      status,
-      paymentStatus,
-      message: `Current status: ${status}`,
-    };
-  }
-
-  private generateReferenceNumber(method: string, externalId: string): string {
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-    const methodPrefix = method.substring(0, 3).toUpperCase();
-    return `REF-${methodPrefix}-${dateStr}-${externalId.substring(0, 8)}`;
-  }
-
-  private async simulateDelay(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, 100));
+    return new Promise((r) => setTimeout(r, delay[method]));
   }
 }
 

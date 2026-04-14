@@ -5,19 +5,73 @@ export interface CalculateInvoiceTotalOptions {
   items: Omit<InvoiceItem, "id" | "lineTotal" | "taxAmount">[];
 }
 
+export class InvoiceError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+  ) {
+    super(message);
+    this.name = "InvoiceError";
+  }
+}
+
+export class InvalidInvoiceItemError extends InvoiceError {
+  constructor(message: string) {
+    super(message, "INVALID_INVOICE_ITEM");
+    this.name = "InvalidInvoiceItemError";
+  }
+}
+
+export class InvalidQuantityError extends InvoiceError {
+  constructor(message: string) {
+    super(message, "INVALID_QUANTITY");
+    this.name = "InvalidQuantityError";
+  }
+}
+
+export class InvalidUnitPriceError extends InvoiceError {
+  constructor(message: string) {
+    super(message, "INVALID_UNIT_PRICE");
+    this.name = "InvalidUnitPriceError";
+  }
+}
+
+export class InvalidTaxRateError extends InvoiceError {
+  constructor(message: string) {
+    super(message, "INVALID_TAX_RATE");
+    this.name = "InvalidTaxRateError";
+  }
+}
+
 function generateInvoiceNumber(): string {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `INV-${dateStr}-${random}`;
+  const uuidPart = uuidv4().substring(0, 8).toUpperCase();
+  return `INV-${dateStr}-${uuidPart}`;
 }
 
-function calculateItemLineTotal(item: InvoiceItem): number {
-  return item.quantity * item.unitPrice;
-}
+function validateInvoiceItem(
+  item: Omit<InvoiceItem, "id" | "lineTotal" | "taxAmount">,
+): void {
+  if (!item.description || item.description.trim() === "") {
+    throw new InvalidInvoiceItemError("Item description is required");
+  }
 
-function calculateItemTax(item: InvoiceItem): number {
-  return calculateItemLineTotal(item) * item.taxRate;
+  if (typeof item.quantity !== "number" || item.quantity <= 0) {
+    throw new InvalidQuantityError("Quantity must be greater than 0");
+  }
+
+  if (typeof item.unitPrice !== "number" || item.unitPrice < 0) {
+    throw new InvalidUnitPriceError(
+      "Unit price must be greater than or equal to 0",
+    );
+  }
+
+  if (typeof item.taxRate !== "number" || item.taxRate < 0) {
+    throw new InvalidTaxRateError(
+      "Tax rate must be greater than or equal to 0",
+    );
+  }
 }
 
 export function calculateInvoiceTotal(
@@ -25,7 +79,13 @@ export function calculateInvoiceTotal(
 ): Invoice {
   const { items: itemsInput } = options;
 
-  const items: InvoiceItem[] = itemsInput.map((item, index) => {
+  if (!itemsInput || itemsInput.length === 0) {
+    throw new InvoiceError("At least one item is required", "EMPTY_ITEMS");
+  }
+
+  itemsInput.forEach(validateInvoiceItem);
+
+  const items: InvoiceItem[] = itemsInput.map((item) => {
     const lineTotal = item.quantity * item.unitPrice;
     const taxAmount = lineTotal * item.taxRate;
     return {
@@ -53,7 +113,7 @@ export function calculateInvoiceTotal(
     totalAmount,
     totalTax,
     outstandingAmount: totalAmount,
-    status: "pending" as InvoiceStatus,
+    status: totalAmount === 0 ? "paid" : "pending",
   };
 
   return invoice;
