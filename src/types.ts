@@ -50,6 +50,7 @@ export interface Receipt {
   totalPaid: number;
   remainingBalance: number;
   items: ReceiptItem[];
+  updatedInvoice: Invoice;
 }
 
 export interface ReceiptItem {

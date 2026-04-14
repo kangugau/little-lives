@@ -1,8 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { PaymentMethod, PaymentStatus } from "../../types";
 
-export type ExternalPaymentStatus = "pending" | "completed" | "failed";
-
 export interface ExternalPaymentRequest {
   amount: number;
   method: PaymentMethod;
@@ -11,16 +9,14 @@ export interface ExternalPaymentRequest {
 export interface ExternalPaymentResponse {
   externalId: string;
   provider: string;
-  status: ExternalPaymentStatus;
-  paymentStatus: PaymentStatus;
+  status: PaymentStatus;
   referenceNumber: string;
   createdAt: Date;
 }
 
 export interface ExternalPaymentResult {
   externalId: string;
-  status: ExternalPaymentStatus;
-  paymentStatus: PaymentStatus;
+  status: PaymentStatus;
   message: string;
 }
 
@@ -48,26 +44,22 @@ export class ExternalPaymentService {
     await this.simulateDelay(method);
 
     const status = this.getStatus(method, amount);
-    const paymentStatus: PaymentStatus =
-      status === "completed" ? "complete" : "pending";
-
     const referenceNumber = this.generateRef(method, externalId);
 
     return {
       externalId,
       provider: PROVIDER_MAP[method],
       status,
-      paymentStatus,
       referenceNumber,
       createdAt: new Date(),
     };
   }
 
-  private getStatus(method: PaymentMethod, amount: number): ExternalPaymentStatus {
-    if (method === "cash") return "completed";
+  private getStatus(method: PaymentMethod, amount: number): PaymentStatus {
+    if (method === "cash") return "complete";
     if (method === "bank_transfer") return "pending";
-    if (method === "credit_card") return amount > 10000 ? "pending" : "completed";
-    return Math.random() > 0.1 ? "completed" : "failed";
+    if (method === "credit_card") return amount > 10000 ? "pending" : "complete";
+    return Math.random() > 0.1 ? "complete" : "rejected";
   }
 
   private generateRef(method: PaymentMethod, id: string): string {

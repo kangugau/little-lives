@@ -13,8 +13,7 @@ describe("ExternalPaymentService", () => {
 
       expect(result.externalId).toMatch(/^[0-9a-f-]{36}$/);
       expect(result.provider).toBe("CreditCardProvider");
-      expect(result.status).toMatch(/^(pending|completed|failed)$/);
-      expect(result.paymentStatus).toMatch(/^(complete|pending)$/);
+      expect(result.status).toMatch(/^(pending|complete|rejected)$/);
       expect(result.referenceNumber).toMatch(/^REF-CC-\d{8}-[a-f0-9]+$/);
       expect(result.createdAt).toBeInstanceOf(Date);
     });
@@ -27,7 +26,7 @@ describe("ExternalPaymentService", () => {
 
       expect(result.externalId).toBeTruthy();
       expect(result.provider).toBe("CashProvider");
-      expect(result.status).toBe("completed");
+      expect(result.status).toBe("complete");
       expect(result.referenceNumber).toMatch(/^REF-CSH-\d{8}-/);
     });
   });

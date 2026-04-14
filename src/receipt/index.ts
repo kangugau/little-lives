@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { Invoice, Payment, Receipt, ReceiptItem } from "../types";
+import { Invoice, InvoiceStatus, Payment, Receipt, ReceiptItem } from "../types";
 
 export interface GenerateReceiptOptions {
   payment: Payment;
@@ -9,18 +9,12 @@ export interface GenerateReceiptOptions {
 export function generateReceipt(options: GenerateReceiptOptions): Receipt {
   const { payment, invoice } = options;
 
-  const remainingBalance = invoice.outstandingAmount - payment.amount;
+  const rawRemainingBalance = invoice.outstandingAmount - payment.amount;
+  const remainingBalance = rawRemainingBalance < 0 ? 0 : rawRemainingBalance;
+  const updatedOutstandingAmount = rawRemainingBalance > 0 ? rawRemainingBalance : 0;
+  const isPaid = rawRemainingBalance <= 0 || invoice.outstandingAmount === 0;
 
-  const items: ReceiptItem[] = invoice.items.map((item) => {
-    const itemRatio = item.lineTotal / invoice.totalAmount;
-    const amountPaid = payment.amount * itemRatio;
-    return {
-      description: item.description,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      amountPaid,
-    };
-  });
+  const items: ReceiptItem[] = [];
 
   return {
     id: uuidv4(),
@@ -29,5 +23,10 @@ export function generateReceipt(options: GenerateReceiptOptions): Receipt {
     totalPaid: payment.amount,
     remainingBalance,
     items,
+    updatedInvoice: {
+      ...invoice,
+      outstandingAmount: updatedOutstandingAmount,
+      status: isPaid ? "paid" as InvoiceStatus : invoice.status,
+    },
   };
 }

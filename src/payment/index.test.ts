@@ -55,6 +55,7 @@ describe("processPayment", () => {
     expect(payment.status).toMatch(/^(complete|pending)$/);
 
     expect(updatedInvoice.outstandingAmount).toBe(0);
+    expect(updatedInvoice.status).toBe("paid");
   });
 
   it("should process payment with credit_card method", async () => {
@@ -93,7 +94,7 @@ describe("processPayment", () => {
     expect(payment.paymentMethod).toBe("bank_transfer");
   });
 
-  it("should update invoice outstanding amount", async () => {
+  it("should process payment and update invoice via receipt", async () => {
     const invoice = createInvoice(200, 200);
     const options: ProcessPaymentOptions = {
       invoice,
@@ -187,7 +188,6 @@ describe("processPayment", () => {
       externalId: "ext-123",
       provider: "BankTransferProvider",
       status: "pending",
-      paymentStatus: "pending",
       referenceNumber: "REF-BT-20260414-abc123",
       createdAt: new Date(),
     });
@@ -207,8 +207,7 @@ describe("processPayment", () => {
     vi.spyOn(externalPaymentService, "createPayment").mockResolvedValueOnce({
       externalId: "ext-123",
       provider: "CashProvider",
-      status: "completed",
-      paymentStatus: "complete",
+      status: "complete",
       referenceNumber: "REF-CSH-20260414-abc123",
       createdAt: new Date(),
     });
@@ -224,12 +223,11 @@ describe("processPayment", () => {
     expect(payment.status).toBe("complete");
   });
 
-  it("should handle failed status from service", async () => {
+  it("should handle rejected status from service", async () => {
     vi.spyOn(externalPaymentService, "createPayment").mockResolvedValueOnce({
       externalId: "ext-123",
       provider: "DebitCardProvider",
-      status: "failed",
-      paymentStatus: "pending",
+      status: "rejected",
       referenceNumber: "REF-DB-20260414-abc123",
       createdAt: new Date(),
     });
@@ -242,6 +240,6 @@ describe("processPayment", () => {
     };
 
     const { payment } = await processPayment(options);
-    expect(payment.status).toBe("pending");
+    expect(payment.status).toBe("rejected");
   });
 });

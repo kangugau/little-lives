@@ -1,17 +1,18 @@
 import { v4 as uuidv4 } from "uuid";
 import {
   Invoice,
-  InvoiceStatus,
   Payment,
   PaymentMethod,
   PaymentStatus,
+  Receipt,
 } from "../types";
 import {
   ExternalPaymentService,
   ExternalPaymentRequest,
   ExternalPaymentResponse,
   externalPaymentService as defaultExternalService,
-} from "./external/index";
+} from "./external";
+import { generateReceipt } from "../receipt/index";
 
 export class PaymentError extends Error {
   constructor(message: string, public readonly code: string) {
@@ -66,6 +67,7 @@ export interface ProcessPaymentOptions {
 export interface ProcessPaymentResult {
   payment: Payment;
   updatedInvoice: Invoice;
+  receipt: Receipt;
 }
 
 function validateAmount(amount: number, invoiceOutstandingAmount: number): void {
@@ -116,15 +118,13 @@ export async function processPayment(
     const response: ExternalPaymentResponse =
       await service.createPayment(request);
     referenceNumber = response.referenceNumber;
-    status = response.paymentStatus;
+    status = response.status;
   } catch (error) {
     throw new ExternalPaymentError(
       `Failed to process external payment: ${error instanceof Error ? error.message : "Unknown error"}`,
       error,
     );
   }
-
-  const remainingBalance = invoice.outstandingAmount - amount;
 
   const payment: Payment = {
     id: uuidv4(),
@@ -136,15 +136,11 @@ export async function processPayment(
     status,
   };
 
-  const updatedInvoice: Invoice = {
-    ...invoice,
-    outstandingAmount: remainingBalance > 0 ? remainingBalance : 0,
-    status:
-      remainingBalance <= 0 ? ("paid" as InvoiceStatus) : invoice.status,
-  };
+  const receipt = generateReceipt({ payment, invoice });
 
   return {
     payment,
-    updatedInvoice,
+    updatedInvoice: receipt.updatedInvoice,
+    receipt,
   };
 }

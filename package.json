@@ -2,6 +2,7 @@
   "name": "little-lives",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "src/index.js",
   "engines": {
     "node": ">=18.0.0"
@@ -9,7 +10,8 @@
   "scripts": {
     "test": "vitest",
     "test:run": "vitest run",
-    "build": "tsc"
+    "build": "tsc",
+    "example": "tsx example.js"
   },
   "keywords": [],
   "author": "",
@@ -17,6 +19,7 @@
   "packageManager": "pnpm@10.28.2",
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.4"
   },
