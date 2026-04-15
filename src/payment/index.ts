@@ -1,67 +1,67 @@
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4 } from 'uuid';
 import {
   Invoice,
   Payment,
   PaymentMethod,
   PaymentStatus,
   Receipt,
-} from "../types";
+} from '../types';
 import {
   ExternalPaymentService,
   ExternalPaymentRequest,
   ExternalPaymentResponse,
   externalPaymentService as defaultExternalService,
-} from "./external";
-import { generateReceipt } from "../receipt/index";
+} from './external';
+import { generateReceipt } from '../receipt/index';
 
 export class PaymentError extends Error {
   constructor(
     message: string,
-    public readonly code: string,
+    public readonly code: string
   ) {
     super(message);
-    this.name = "PaymentError";
+    this.name = 'PaymentError';
   }
 }
 
 export class ExternalPaymentError extends PaymentError {
   constructor(
     message: string,
-    public readonly externalError?: unknown,
+    public readonly externalError?: unknown
   ) {
-    super(message, "EXTERNAL_PAYMENT_ERROR");
-    this.name = "ExternalPaymentError";
+    super(message, 'EXTERNAL_PAYMENT_ERROR');
+    this.name = 'ExternalPaymentError';
   }
 }
 
 export class InvalidAmountError extends PaymentError {
   constructor(message: string) {
-    super(message, "INVALID_AMOUNT");
-    this.name = "InvalidAmountError";
+    super(message, 'INVALID_AMOUNT');
+    this.name = 'InvalidAmountError';
   }
 }
 
 export class ServiceUnavailableError extends PaymentError {
   constructor(message: string) {
-    super(message, "SERVICE_UNAVAILABLE");
-    this.name = "ServiceUnavailableError";
+    super(message, 'SERVICE_UNAVAILABLE');
+    this.name = 'ServiceUnavailableError';
   }
 }
 
-export class InvoiceZeroAmountError extends PaymentError {
+export class InvoiceAlreadyPaidError extends PaymentError {
   constructor(message: string) {
-    super(message, "INVOICE_ZERO_AMOUNT");
-    this.name = "InvoiceZeroAmountError";
+    super(message, 'INVOICE_PAID');
+    this.name = 'InvoiceZeroAmountError';
   }
 }
 
 export class MaxAmountExceededError extends PaymentError {
   constructor(
     message: string,
-    public readonly maxAmount: number,
+    public readonly maxAmount: number
   ) {
-    super(message, "MAX_AMOUNT_EXCEEDED");
-    this.name = "MaxAmountExceededError";
+    super(message, 'MAX_AMOUNT_EXCEEDED');
+    this.name = 'MaxAmountExceededError';
   }
 }
 
@@ -79,64 +79,66 @@ export interface ProcessPaymentResult {
   receipt: Receipt | null;
 }
 
-function validateAmount(
-  amount: number,
-  invoiceOutstandingAmount: number,
-): void {
-  if (amount <= 0) {
-    throw new InvalidAmountError("Payment amount must be greater than 0");
+function validateAmount(amount: number, invoice: Invoice): void {
+  if (invoice.status === 'paid') {
+    throw new InvoiceAlreadyPaidError('Invoice has already been paid');
   }
 
-  if (invoiceOutstandingAmount <= 0) {
-    throw new InvoiceZeroAmountError("Invoice has zero outstanding amount");
+  if (amount < 0) {
+    throw new InvalidAmountError('Payment amount must be greater than 0');
   }
 
   if (amount > MAX_PAYMENT_AMOUNT) {
     throw new MaxAmountExceededError(
       `Payment amount exceeds maximum allowed amount of ${MAX_PAYMENT_AMOUNT}`,
-      MAX_PAYMENT_AMOUNT,
+      MAX_PAYMENT_AMOUNT
     );
   }
 }
 
 function validateService(
-  service: ExternalPaymentService | undefined,
+  service: ExternalPaymentService | undefined
 ): asserts service is ExternalPaymentService {
   if (!service) {
     throw new ServiceUnavailableError(
-      "External payment service is not available",
+      'External payment service is not available'
     );
   }
 }
 
 export async function processPayment(
-  options: ProcessPaymentOptions,
+  options: ProcessPaymentOptions
 ): Promise<ProcessPaymentResult> {
   const { invoice, method, amount } = options;
 
   const service = defaultExternalService;
   validateService(service);
 
-  validateAmount(amount, invoice.outstandingAmount);
+  validateAmount(amount, invoice);
 
-  let status: PaymentStatus = "pending";
+  let status: PaymentStatus = 'pending';
   let referenceNumber: string;
   let updatedInvoice = { ...invoice };
 
-  try {
-    const request: ExternalPaymentRequest = {
-      amount,
-      method,
-    };
-    const response: ExternalPaymentResponse =
-      await service.createPayment(request);
-    referenceNumber = response.referenceNumber;
-    status = response.status;
-  } catch (error) {
-    throw new ExternalPaymentError(
-      `Failed to process external payment: ${error instanceof Error ? error.message : "Unknown error"}`,
-      error,
-    );
+  if (amount === 0) {
+    status = 'complete';
+    referenceNumber = `REF-ZERO-${Date.now()}`;
+  } else {
+    try {
+      const request: ExternalPaymentRequest = {
+        amount,
+        method,
+      };
+      const response: ExternalPaymentResponse =
+        await service.createPayment(request);
+      referenceNumber = response.referenceNumber;
+      status = response.status;
+    } catch (error) {
+      throw new ExternalPaymentError(
+        `Failed to process external payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error
+      );
+    }
   }
 
   const payment: Payment = {
@@ -151,11 +153,11 @@ export async function processPayment(
 
   let receipt: Receipt | null = null;
 
-  if (status === "complete") {
+  if (status === 'complete') {
     updatedInvoice.outstandingAmount =
       updatedInvoice.outstandingAmount - amount;
     updatedInvoice.status =
-      updatedInvoice.outstandingAmount === 0 ? "paid" : "pending";
+      updatedInvoice.outstandingAmount === 0 ? 'paid' : 'pending';
     receipt = generateReceipt({ payment, invoice });
   }
 

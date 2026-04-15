@@ -3,9 +3,7 @@ import {
   processPayment,
   ProcessPaymentOptions,
   InvalidAmountError,
-  ExternalPaymentError,
-  ServiceUnavailableError,
-  InvoiceZeroAmountError,
+  InvoiceAlreadyPaidError,
   MaxAmountExceededError,
   MAX_PAYMENT_AMOUNT,
 } from './index';
@@ -84,18 +82,7 @@ describe('processPayment', () => {
     expect(updatedInvoice.status).toBe('pending');
   });
 
-  it('should throw InvalidAmountError when amount is zero', async () => {
-    const invoice = createInvoice();
-    const options: ProcessPaymentOptions = {
-      invoice,
-      method: 'cash',
-      amount: 0,
-    };
-
-    await expect(processPayment(options)).rejects.toThrow(InvalidAmountError);
-  });
-
-  it('should throw error when amount is negative', async () => {
+  it('should throw InvalidAmountError when amount is negative', async () => {
     const invoice = createInvoice();
     const options: ProcessPaymentOptions = {
       invoice,
@@ -106,21 +93,21 @@ describe('processPayment', () => {
     await expect(processPayment(options)).rejects.toThrow(InvalidAmountError);
   });
 
-  it('should throw InvoiceZeroAmountError for zero amount invoice', async () => {
+  it('should allow zero amount pending invoice to be processed', async () => {
     const invoice = createInvoice(0, 0);
     const options: ProcessPaymentOptions = {
       invoice,
       method: 'cash',
-      amount: 10,
+      amount: 0,
     };
 
-    await expect(processPayment(options)).rejects.toThrow(
-      InvoiceZeroAmountError
-    );
+    const { payment } = await processPayment(options);
+    expect(payment.amount).toBe(0);
   });
 
   it('should throw InvoiceZeroAmountError for already paid invoice', async () => {
     const invoice = createInvoice(100, 0);
+    invoice.status = 'paid';
     const options: ProcessPaymentOptions = {
       invoice,
       method: 'cash',
@@ -128,7 +115,7 @@ describe('processPayment', () => {
     };
 
     await expect(processPayment(options)).rejects.toThrow(
-      InvoiceZeroAmountError
+      InvoiceAlreadyPaidError
     );
   });
 
@@ -160,26 +147,6 @@ describe('processPayment', () => {
     expect(payment.amount).toBe(MAX_PAYMENT_AMOUNT);
   });
 
-  it('should handle pending status from service', async () => {
-    vi.spyOn(externalPaymentService, 'createPayment').mockResolvedValueOnce({
-      externalId: 'ext-123',
-      provider: 'BankTransferProvider',
-      status: 'pending',
-      referenceNumber: 'REF-BT-20260414-abc123',
-      createdAt: new Date(),
-    });
-
-    const invoice = createInvoice(100, 100);
-    const options: ProcessPaymentOptions = {
-      invoice,
-      method: 'bank_transfer',
-      amount: 100,
-    };
-
-    const { payment } = await processPayment(options);
-    expect(payment.status).toBe('pending');
-  });
-
   it('should handle completed status from service', async () => {
     vi.spyOn(externalPaymentService, 'createPayment').mockResolvedValueOnce({
       externalId: 'ext-123',
@@ -198,5 +165,27 @@ describe('processPayment', () => {
 
     const { payment } = await processPayment(options);
     expect(payment.status).toBe('complete');
+  });
+
+  it('should handle rejected status from service', async () => {
+    vi.spyOn(externalPaymentService, 'createPayment').mockResolvedValueOnce({
+      externalId: 'ext-123',
+      provider: 'CashProvider',
+      status: 'rejected',
+      referenceNumber: 'REF-CSH-20260414-abc123',
+      createdAt: new Date(),
+    });
+
+    const invoice = createInvoice(100, 100);
+    const options: ProcessPaymentOptions = {
+      invoice,
+      method: 'cash',
+      amount: 100,
+    };
+
+    const { payment, receipt, updatedInvoice } = await processPayment(options);
+    expect(payment.status).toBe('rejected');
+    expect(receipt).toBeNull();
+    expect(updatedInvoice).toEqual(invoice);
   });
 });

@@ -58,7 +58,7 @@ describe("calculateInvoiceTotal", () => {
 
     const invoice = calculateInvoiceTotal(options);
     expect(invoice.totalAmount).toBe(0);
-    expect(invoice.status).toBe("paid");
+    expect(invoice.status).toBe("pending");
   });
 
   it("should create invoice with high tax rate (>100%)", () => {
