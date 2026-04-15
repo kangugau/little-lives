@@ -15,14 +15,20 @@ import {
 import { generateReceipt } from "../receipt/index";
 
 export class PaymentError extends Error {
-  constructor(message: string, public readonly code: string) {
+  constructor(
+    message: string,
+    public readonly code: string,
+  ) {
     super(message);
     this.name = "PaymentError";
   }
 }
 
 export class ExternalPaymentError extends PaymentError {
-  constructor(message: string, public readonly externalError?: unknown) {
+  constructor(
+    message: string,
+    public readonly externalError?: unknown,
+  ) {
     super(message, "EXTERNAL_PAYMENT_ERROR");
     this.name = "ExternalPaymentError";
   }
@@ -50,7 +56,10 @@ export class InvoiceZeroAmountError extends PaymentError {
 }
 
 export class MaxAmountExceededError extends PaymentError {
-  constructor(message: string, public readonly maxAmount: number) {
+  constructor(
+    message: string,
+    public readonly maxAmount: number,
+  ) {
     super(message, "MAX_AMOUNT_EXCEEDED");
     this.name = "MaxAmountExceededError";
   }
@@ -67,10 +76,13 @@ export interface ProcessPaymentOptions {
 export interface ProcessPaymentResult {
   payment: Payment;
   updatedInvoice: Invoice;
-  receipt: Receipt;
+  receipt: Receipt | null;
 }
 
-function validateAmount(amount: number, invoiceOutstandingAmount: number): void {
+function validateAmount(
+  amount: number,
+  invoiceOutstandingAmount: number,
+): void {
   if (amount <= 0) {
     throw new InvalidAmountError("Payment amount must be greater than 0");
   }
@@ -109,6 +121,7 @@ export async function processPayment(
 
   let status: PaymentStatus = "pending";
   let referenceNumber: string;
+  let updatedInvoice = { ...invoice };
 
   try {
     const request: ExternalPaymentRequest = {
@@ -136,11 +149,19 @@ export async function processPayment(
     status,
   };
 
-  const receipt = generateReceipt({ payment, invoice });
+  let receipt: Receipt | null = null;
+
+  if (status === "complete") {
+    updatedInvoice.outstandingAmount =
+      updatedInvoice.outstandingAmount - amount;
+    updatedInvoice.status =
+      updatedInvoice.outstandingAmount === 0 ? "paid" : "pending";
+    receipt = generateReceipt({ payment, invoice });
+  }
 
   return {
     payment,
-    updatedInvoice: receipt.updatedInvoice,
+    updatedInvoice,
     receipt,
   };
 }

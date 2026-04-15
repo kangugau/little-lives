@@ -1,5 +1,5 @@
-import { v4 as uuidv4 } from "uuid";
-import { PaymentMethod, PaymentStatus } from "../../types";
+import { v4 as uuidv4 } from 'uuid';
+import { PaymentMethod, PaymentStatus } from '../../types';
 
 export interface ExternalPaymentRequest {
   amount: number;
@@ -21,22 +21,18 @@ export interface ExternalPaymentResult {
 }
 
 const PROVIDER_MAP: Record<PaymentMethod, string> = {
-  cash: "CashProvider",
-  credit_card: "CreditCardProvider",
-  debit_card: "DebitCardProvider",
-  bank_transfer: "BankTransferProvider",
+  cash: 'CashProvider',
+  bank_transfer: 'BankTransferProvider',
 };
 
 const REF_PREFIX: Record<PaymentMethod, string> = {
-  cash: "CSH",
-  credit_card: "CC",
-  debit_card: "DB",
-  bank_transfer: "BT",
+  cash: 'CSH',
+  bank_transfer: 'BT',
 };
 
 export class ExternalPaymentService {
   async createPayment(
-    request: ExternalPaymentRequest,
+    request: ExternalPaymentRequest
   ): Promise<ExternalPaymentResponse> {
     const externalId = uuidv4();
     const { amount, method } = request;
@@ -56,22 +52,18 @@ export class ExternalPaymentService {
   }
 
   private getStatus(method: PaymentMethod, amount: number): PaymentStatus {
-    if (method === "cash") return "complete";
-    if (method === "bank_transfer") return "pending";
-    if (method === "credit_card") return amount > 10000 ? "pending" : "complete";
-    return Math.random() > 0.1 ? "complete" : "rejected";
+    if (method === 'cash') return 'complete';
+    return 'pending';
   }
 
   private generateRef(method: PaymentMethod, id: string): string {
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     return `REF-${REF_PREFIX[method]}-${date}-${id.slice(0, 8)}`;
   }
 
   private async simulateDelay(method: PaymentMethod): Promise<void> {
     const delay: Record<PaymentMethod, number> = {
       cash: 50,
-      credit_card: 150,
-      debit_card: 120,
       bank_transfer: 80,
     };
     return new Promise((r) => setTimeout(r, delay[method]));

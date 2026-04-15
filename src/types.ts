@@ -10,7 +10,7 @@ export interface Invoice {
   status: InvoiceStatus;
 }
 
-export type InvoiceStatus = "pending" | "paid";
+export type InvoiceStatus = 'pending' | 'paid';
 
 export interface InvoiceItem {
   id: string;
@@ -33,29 +33,17 @@ export interface Payment {
   status: PaymentStatus;
 }
 
-export type PaymentMethod =
-  | "cash"
-  | "credit_card"
-  | "debit_card"
-  | "bank_transfer";
+export type PaymentMethod = 'cash' | 'bank_transfer';
 
-export type PaymentStatus = "complete" | "pending" | "rejected";
-
+export type PaymentStatus = 'complete' | 'pending' | 'rejected';
 
 // Receipt
 export interface Receipt {
   id: string;
   paymentId: string;
-  invoiceId: string;
   totalPaid: number;
   remainingBalance: number;
   items: ReceiptItem[];
-  updatedInvoice: Invoice;
 }
 
-export interface ReceiptItem {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  amountPaid: number;
-}
+export interface ReceiptItem {}
