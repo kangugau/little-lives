@@ -1,11 +1,11 @@
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4 } from 'uuid';
 import {
   Invoice,
   InvoiceStatus,
   Payment,
   Receipt,
   ReceiptItem,
-} from "../types";
+} from '../types';
 
 export interface GenerateReceiptOptions {
   payment: Payment;

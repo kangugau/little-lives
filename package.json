@@ -12,8 +12,8 @@
     "test:run": "vitest run",
     "build": "tsc",
     "example": "tsx example.js",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "prettier --write **/*.{js,ts}",
+    "format:check": "prettier --check **/*.{js,ts}"
   },
   "keywords": [],
   "author": "",
