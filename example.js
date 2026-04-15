@@ -1,81 +1,56 @@
 import { calculateInvoiceTotal, processPayment } from './dist/index.js';
 
 async function main() {
-  console.log('='.repeat(60));
-  console.log(
-    'SCENARIO 1: Simple invoice with 2 items, paid by single payment'
-  );
-  console.log('='.repeat(60));
-
+  console.log('Scenario 1: Single payment');
   const invoice1 = calculateInvoiceTotal({
     items: [
       { description: 'Product A', quantity: 2, unitPrice: 50, taxRate: 0.1 },
       { description: 'Product B', quantity: 1, unitPrice: 100, taxRate: 0.2 },
     ],
   });
-
-  console.log('\n--- Invoice Created ---');
-  console.log(JSON.stringify(invoice1, null, 2));
+  console.log(
+    `Invoice total: ${invoice1.totalAmount}, Outstanding: ${invoice1.outstandingAmount}`
+  );
 
   const result1 = await processPayment({
     invoice: invoice1,
     method: 'cash',
     amount: invoice1.outstandingAmount,
   });
+  console.log(`Payment: ${result1.payment.amount} (${result1.payment.status})`);
+  console.log(
+    `Invoice outstanding: ${result1.updatedInvoice.outstandingAmount}, status: ${result1.updatedInvoice.status}`
+  );
 
-  console.log('\n--- Payment Made ---');
-  console.log('Payment:', JSON.stringify(result1.payment, null, 2));
-
-  console.log('\n--- Updated Invoice ---');
-  console.log(JSON.stringify(result1.receipt.updatedInvoice, null, 2));
-
-  console.log('\n--- Receipt ---');
-  console.log(JSON.stringify(result1.receipt, null, 2));
-
-  console.log('\n' + '='.repeat(60));
-  console.log('SCENARIO 2: Simple invoice overpaid by 2 payments');
-  console.log('='.repeat(60));
-
+  console.log('\nScenario 2: Multiple payments');
   const invoice2 = calculateInvoiceTotal({
     items: [
       { description: 'Service Fee', quantity: 1, unitPrice: 100, taxRate: 0 },
     ],
   });
-
-  console.log('\n--- Invoice Created ---');
-  console.log(JSON.stringify(invoice2, null, 2));
+  console.log(
+    `Invoice total: ${invoice2.totalAmount}, Outstanding: ${invoice2.outstandingAmount}`
+  );
 
   const result2a = await processPayment({
     invoice: invoice2,
     method: 'bank_transfer',
     amount: 50,
   });
-
-  console.log('\n--- Payment 1 (50) ---');
-  console.log('Payment:', JSON.stringify(result2a.payment, null, 2));
   console.log(
-    'Updated Invoice:',
-    JSON.stringify(result2a.receipt.updatedInvoice, null, 2)
+    `Payment 1: ${result2a.payment.amount} (${result2a.payment.status}), Outstanding: ${result2a.updatedInvoice.outstandingAmount}`
   );
-  console.log('Receipt:', JSON.stringify(result2a.receipt, null, 2));
 
   const result2b = await processPayment({
-    invoice: result2a.receipt.updatedInvoice,
+    invoice: result2a.updatedInvoice,
     method: 'cash',
     amount: 100,
   });
-
-  console.log('\n--- Payment 2 (100 - overpaid) ---');
-  console.log('Payment:', JSON.stringify(result2b.payment, null, 2));
   console.log(
-    'Updated Invoice:',
-    JSON.stringify(result2b.receipt.updatedInvoice, null, 2)
+    `Payment 2: ${result2b.payment.amount} (${result2b.payment.status}), Outstanding: ${result2b.updatedInvoice.outstandingAmount}`
   );
-  console.log('Receipt:', JSON.stringify(result2b.receipt, null, 2));
 
-  console.log('\n' + '='.repeat(60));
-  console.log('All scenarios completed!');
-  console.log('='.repeat(60));
+  console.log('\nAll scenarios completed!');
 }
 
 main().catch(console.error);
